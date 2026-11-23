@@ -12,52 +12,92 @@
 </head>
 <body>
 <div class="wrap app-only">
-<section class="phone" aria-label="Plateful app prototype">
-  <div class="top">
+<section class="phone" id="app" aria-label="Plateful app">
+  <header class="top">
     <div class="brand"><svg viewBox="0 0 32 32" aria-hidden="true"><circle cx="16" cy="16" r="14" fill="none" stroke="currentColor" stroke-width="3"/><circle cx="16" cy="16" r="8" fill="#e2452b"/><path d="M16 8a8 8 0 0 1 8 8h-8z" fill="#f2b134"/></svg>Plateful</div>
-    <div style="display:flex;align-items:center;gap:8px"><span class="pill" id="date"></span><button class="lang" id="lang" aria-label="Changer de langue / Switch language">FR</button></div>
-  </div>
-  <div class="tabs" role="tablist">
-    <button role="tab" id="t-scan" aria-selected="true" data-v="scan" data-k="tScan">Scan meal</button>
-    <button role="tab" id="t-today" aria-selected="false" data-v="today" data-k="tToday">Today</button>
-  </div>
+    <div class="topr"><button class="lang" id="lang" aria-label="Changer de langue / Switch language">FR</button>
+      <button class="iconbtn" id="toProfile" aria-label="Profile"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21c1.5-4.5 4.5-6.5 8-6.5s6.5 2 8 6.5"/></svg></button></div>
+  </header>
 
-  <div class="view" id="v-scan">
-    <div class="shot" id="shot"><div class="empty" id="empty" data-k="empty">Take or upload a photo of your meal. No coin, hand or card needed.</div></div>
-    <div class="actions">
-      <label class="btn pri" id="upl"><span data-k="photo">Photo of meal</span><input type="file" id="file" accept="image/*" capture="environment"></label>
-      <button class="btn" id="add" disabled data-k="add">Add to today</button>
+  <main class="screens" id="screens">
+    <!-- TODAY -->
+    <div class="view" id="v-today">
+      <p class="hello" id="hello"></p>
+      <h1 class="dateh" id="dateH"></h1>
+      <div class="ringcard">
+        <div class="ringwrap">
+          <svg class="ring" viewBox="0 0 120 120" aria-hidden="true"><circle cx="60" cy="60" r="52" class="rtrack"/><circle cx="60" cy="60" r="52" class="rfill" id="rFill"/></svg>
+          <div class="ringin"><b id="leftK">0</b><span id="leftL"></span></div>
+        </div>
+        <dl class="ringside">
+          <div><dt data-k="goal">Goal</dt><dd id="kGoal"></dd></div>
+          <div><dt data-k="eaten">Eaten</dt><dd id="kEaten"></dd></div>
+          <div><dt data-k="burned">Burned</dt><dd id="kBurn"></dd><small data-k="burnedNote"></small></div>
+        </dl>
+      </div>
+      <div class="macros" id="macros"></div>
+      <h2 class="sec" data-k="meals">Today's meals</h2>
+      <ul class="meals" id="meals"></ul>
+      <button class="btn pri wide" id="scanCta" data-k="scanCta">Scan a meal</button>
     </div>
-    <div class="samples" aria-label="Sample meals">
-      <button data-s="0" data-k="s0">Sample: chicken &amp; rice</button>
-      <button data-s="1" data-k="s1">Sample: garden salad</button>
-      <button data-s="2" data-k="s2">Sample: bean soup</button>
-    </div>
-    <div id="status" class="note" role="status"></div>
-    <div id="result"></div>
-  </div>
 
-  <div class="view" id="v-today" hidden>
-    <div class="total"><div><div class="meta" data-k="inToday">Energy in today</div><b id="inK">0</b> <span class="meta">kcal</span></div><div class="meta" id="macT" style="text-align:right"></div></div>
-    <div class="bal">
-      <div class="meta" data-k="intake">Intake</div><div class="bar"><i id="barIn" style="background:var(--t);width:0"></i></div>
-      <div class="meta" data-k="expend">Expenditure (from Digital Health tracker, sample value)</div><div class="bar"><i id="barOut" style="background:var(--g);width:0"></i></div>
-      <p id="balTxt" style="margin:8px 0 0;font-weight:700"></p>
+    <!-- SCAN -->
+    <div class="view" id="v-scan" hidden>
+      <div class="shot" id="shot"><div class="empty" id="empty" data-k="empty"></div></div>
+      <div class="actions">
+        <label class="btn pri" id="upl"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/></svg><span data-k="photo">Photo of meal</span><input type="file" id="file" accept="image/*" capture="environment"></label>
+      </div>
+      <div class="samples" aria-label="Sample meals">
+        <button data-s="0" data-k="s0"></button><button data-s="1" data-k="s1"></button><button data-s="2" data-k="s2"></button>
+      </div>
+      <div id="status" class="note" role="status"></div>
+      <div id="result"></div>
+      <button class="btn pri wide" id="add" hidden></button>
     </div>
-    <ul class="log" id="log"></ul>
-    <div class="actions"><button class="btn" id="clear" data-k="clear">Clear today</button></div>
-    <label class="sw"><input type="checkbox" id="consent"><span data-k="consent">Let my corrected photos help improve the model (encrypted, can be withdrawn any time)</span></label>
-    <div class="note" id="fb"></div>
-    <details class="api"><summary data-k="api">API payload sent to Digital Health expenditure products</summary><pre id="apiOut"></pre><button class="btn" id="copy" data-k="copy">Copy JSON</button></details>
+
+    <!-- WEEK -->
+    <div class="view" id="v-week" hidden>
+      <h1 class="dateh" data-k="week">This week</h1>
+      <div class="stats" id="stats"></div>
+      <div class="chart" id="chart" role="img"></div>
+      <p class="meta" data-k="demoNote"></p>
+      <ul class="days" id="days"></ul>
+    </div>
+
+    <!-- PROFILE -->
+    <div class="view" id="v-profile" hidden>
+      <h1 class="dateh" data-k="profile">Profile</h1>
+      <label class="field"><span data-k="dailyGoal">Daily calorie goal</span><span class="goalrow"><input type="number" id="goalIn" min="1000" max="5000" step="50" inputmode="numeric"> <span class="meta">kcal</span></span></label>
+      <h2 class="sec" data-k="privacy">Privacy and model training</h2>
+      <label class="sw"><input type="checkbox" id="consent"><span data-k="consent"></span></label>
+      <div class="note" id="fb"></div>
+      <details class="api"><summary data-k="api"></summary><pre id="apiOut"></pre><button class="btn" id="copy" data-k="copy"></button></details>
+      <div class="actions"><button class="btn" id="replay" data-k="replay"></button><button class="btn" id="reset" data-k="reset"></button></div>
+      <p class="meta">SEG 4505 · Group 10 prototype</p>
+    </div>
+  </main>
+
+  <nav class="tabbar" aria-label="Main">
+    <button class="tab" data-v="today" aria-current="page"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8"/><path d="M12 7v5l3 2"/></svg><span data-k="tabToday">Today</span></button>
+    <button class="tab fab" data-v="scan"><span class="fabc"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/></svg></span><span data-k="tabScan">Scan</span></button>
+    <button class="tab" data-v="week"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 20V11M10 20V5M15 20v-7M20 20V9"/></svg><span data-k="tabWeek">Week</span></button>
+  </nav>
+
+  <div class="onb" id="onb" hidden>
+    <div class="slides" id="slides">
+      <div class="slide"><div class="art" id="art0"></div><h2 data-k="o1t"></h2><p data-k="o1b"></p></div>
+      <div class="slide"><div class="art" id="art1"></div><h2 data-k="o2t"></h2><p data-k="o2b"></p></div>
+      <div class="slide"><div class="art art3"><svg viewBox="0 0 120 120" aria-hidden="true"><circle cx="60" cy="60" r="46" class="rtrack"/><circle cx="60" cy="60" r="46" class="rfill" style="stroke-dasharray:289;stroke-dashoffset:95"/></svg></div><h2 data-k="o3t"></h2><p data-k="o3b"></p>
+        <label class="field"><span data-k="dailyGoal"></span><span class="goalrow"><input type="number" id="onbGoal" min="1000" max="5000" step="50" value="2200" inputmode="numeric"> <span class="meta">kcal</span></span></label></div>
+    </div>
+    <div class="dots" id="dots"><i></i><i></i><i></i></div>
+    <div class="onbnav"><button class="btn ghost" id="skip" data-k="skip"></button><button class="btn pri" id="next" data-k="next"></button></div>
   </div>
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
 </section>
-
-
 </div>
-
 <script src="js/data.js"></script>
 <script src="js/calc.js"></script>
 <script src="js/app.js"></script>
-
 </body>
 </html>

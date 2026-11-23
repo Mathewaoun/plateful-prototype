@@ -33,3 +33,33 @@ const S=[
   {name:"kidney beans",bbox:[.27,.25,.46,.5],coverage:.24,thickness_cm:4.5,confidence:.87,draw:"beans",col:"#7a1f1f"},
   {name:"carrot",bbox:[.33,.35,.32,.3],coverage:.1,thickness_cm:4.5,confidence:.71,draw:"cubes",col:"#f08a24"}]}
 ];
+
+// App-shell strings (onboarding, Today, Week, Profile). French uses Québec meal names.
+Object.assign(T.en,{
+ greet:h=>h<12?"Good morning":h<18?"Good afternoon":"Good evening",left:"kcal left",overL:"kcal over",goal:"Goal",eaten:"Eaten",burned:"Burned",burnedNote:"from your tracker (sample)",net:"Net",
+ meals:"Today's meals",scanCta:"Scan a meal",noMealsToday:"Nothing logged yet today. Tap Scan and snap your first meal.",
+ slot:["Breakfast","Lunch","Snack","Dinner"],logBtn:s=>`Log as ${s}`,logged:s=>`Added to ${s}`,
+ tabToday:"Today",tabScan:"Scan",tabWeek:"Week",week:"This week",avg:"Daily average",onTarget:"Days on target",streak:"Logging streak",daysU:"days",demoNote:"Earlier days are sample data so the chart has something to show.",goalLine:"Goal",
+ profile:"Profile",dailyGoal:"Daily calorie goal",privacy:"Privacy and model training",replay:"Replay intro",reset:"Reset all data",resetDone:"All data cleared.",saved:"Saved",
+ o1t:"Snap your plate",o1b:"One photo is all it takes. No coin, hand or card needed: Plateful works out the real size by itself.",
+ o2t:"Every ingredient, weighed",o2b:"Rice, chicken and broccoli are measured separately: area, depth, weight, then calories and macros.",
+ o3t:"Eat for your day",o3b:"Your meals meet the calories your Digital Health tracker says you burned. Set a daily goal to start.",
+ next:"Next",skip:"Skip",start:"Start",scanning:"Scanning…",kcalU:"kcal",back:"Back"});
+Object.assign(T.fr,{
+ greet:h=>h<12?"Bonjour":h<18?"Bon après-midi":"Bonsoir",left:"kcal restantes",overL:"kcal de trop",goal:"Objectif",eaten:"Consommé",burned:"Dépensé",burnedNote:"selon votre traqueur (exemple)",net:"Net",
+ meals:"Repas du jour",scanCta:"Analyser un repas",noMealsToday:"Rien de consigné aujourd'hui. Touchez Analyser et photographiez votre premier repas.",
+ slot:["Déjeuner","Dîner","Collation","Souper"],logBtn:s=>`Consigner : ${s}`,logged:s=>`Ajouté : ${s}`,
+ tabToday:"Aujourd'hui",tabScan:"Analyser",tabWeek:"Semaine",week:"Cette semaine",avg:"Moyenne quotidienne",onTarget:"Jours dans la cible",streak:"Série de suivi",daysU:"jours",demoNote:"Les jours précédents sont des données d'exemple pour que le graphique ne soit pas vide.",goalLine:"Objectif",
+ profile:"Profil",dailyGoal:"Objectif calorique quotidien",privacy:"Confidentialité et entraînement du modèle",replay:"Revoir l'introduction",reset:"Effacer toutes les données",resetDone:"Données effacées.",saved:"Enregistré",
+ o1t:"Photographiez votre assiette",o1b:"Une seule photo suffit. Aucune pièce, main ou carte : Plateful calcule la taille réelle par lui-même.",
+ o2t:"Chaque ingrédient, pesé",o2b:"Riz, poulet et brocoli sont mesurés séparément : surface, profondeur, poids, puis calories et macros.",
+ o3t:"Mangez selon votre journée",o3b:"Vos repas sont comparés aux calories dépensées selon votre traqueur Digital Health. Fixez un objectif pour commencer.",
+ next:"Suivant",skip:"Passer",start:"Commencer",scanning:"Analyse…",kcalU:"kcal",back:"Retour"});
+
+// Sample history for the past 6 days (Week chart). [English, French, kcal, protein, carbs, fat, sample-drawing index or -1]
+const DEMO_MEALS=[
+ ["Oatmeal with banana","Gruau et banane",380,12,68,7,-1],["Greek yogurt and berries","Yogourt grec et petits fruits",220,15,25,6,-1],
+ ["Turkey sandwich","Sandwich à la dinde",430,28,45,14,-1],["Grilled chicken, rice and broccoli","Poulet grillé, riz et brocoli",379,37,46,4,0],
+ ["Kidney bean soup","Soupe aux haricots rouges",237,14,36,3,2],["Apple and cheese","Pomme et fromage",250,9,20,14,-1],
+ ["Salmon and potatoes","Saumon et pommes de terre",560,38,40,24,-1],["Pasta with tomato sauce","Pâtes sauce tomate",610,20,105,10,-1],
+ ["Garden salad with chicken","Salade du jardin au poulet",340,30,14,17,1]];

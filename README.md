@@ -30,6 +30,15 @@ npm test
 
 **Live demo (with live AI detection):** see the hosted Claude artifact link shared by the team. Opened from this repository, the three sample meals and every other feature work fully offline. Live photo analysis needs the hosted version, because it calls a vision model through the Claude artifact runtime.
 
+## The app
+
+- **Intro** on first visit: three swipeable screens, then you set a daily calorie goal.
+- **Today:** a calorie ring (goal, eaten, burned from the tracker), protein/carbs/fat bars, and today's meals with photo thumbnails, grouped as breakfast, lunch, snack and dinner.
+- **Scan** (big centre button): take or upload a photo, or try a sample meal. Ingredients are boxed one by one and the calories count up. Tap any ingredient to correct it, then log the meal in one tap.
+- **Week:** a bar chart against your goal, with daily average, days on target and logging streak. Earlier days are sample data so the chart isn't empty.
+- **Profile:** daily goal, training consent, training queue, API payload, replay intro, reset.
+- **French / English** toggle in the top bar.
+
 ## What the demo shows
 
 | Charter | Requirement | Where to see it |
@@ -38,17 +47,17 @@ npm test
 | FR2 | Auto-calibration, no reference object | Photo width in cm shown for each scan |
 | FR3 | Area → volume → weight → kcal, summed | Formula line under each ingredient |
 | FR4 | Uniform distribution below the surface | Bean soup sample: the beans' share of the surface is applied to the full depth |
-| FR5 | Incremental training | Corrections go into a training queue (Today tab), only with user consent |
-| FR6 | History and correction | Tap an ingredient to rename it, fix its weight or remove it; the Today tab keeps the log |
+| FR5 | Incremental training | Corrections go into a training queue (Profile), only with user consent |
+| FR6 | History and correction | Tap an ingredient to rename it, fix its weight or remove it; Today and Week keep the history |
 | O1, O2 / R1 | Accuracy targets | Confidence for each ingredient; below 75 % it is flagged for the user to check |
 | O3 | Analysis ≤ 5 s | Measured time shown on every live scan |
-| O5 | ≤ 3 interactions | Photo → Add to today = 2 taps |
+| O5 | ≤ 3 interactions | Photo → Log meal = 2 taps |
 | O6 | Android and iOS | Mobile-first UI; the file input opens the camera on phones |
 | H13 | Offline | Photo is queued offline and analysed on reconnect |
 | H14 | French and English | FR/EN toggle |
-| H15 | API to expenditure products | JSON payload on the Today tab |
+| H15 | API to expenditure products | JSON payload on the Profile screen |
 | Scope | Nutritional value | Protein, carbs and fat for each ingredient and meal |
-| NFR | Consent for training data | Checkbox on the Today tab |
+| NFR | Consent for training data | Checkbox on the Profile screen |
 
 ## How the calculation works
 
@@ -73,7 +82,7 @@ details.html        app + "how it works" panel: pipeline, AWS architecture, requ
 css/styles.css      styles, light and dark mode
 js/data.js          UI strings (EN/FR), food reference table, sample meals
 js/calc.js          measurement pipeline (area → volume → weight → kcal)
-js/app.js           UI, live AI detection, journal, consent, API payload, offline queue
+js/app.js           app shell (intro, Today, Scan, Week, Profile), live AI detection, journal, consent, API payload, offline queue
 tests/calc.test.js  unit tests for the pipeline (node:test, no dependencies)
 docs/               screenshots
 ```
@@ -95,4 +104,4 @@ docs/               screenshots
 - Salt, oil, butter and seasoning can't be seen in a photo, so they aren't counted (accepted in the RFB).
 - The sample meals are illustrations with pre-computed detections. They demonstrate the pipeline, not detection accuracy.
 - Reference values are typical figures for the prototype, not the Canadian Nutrient File.
-- The expenditure figure on the Today tab is sample data.
+- The calories-burned figure and the earlier days in the Week chart are sample data.
