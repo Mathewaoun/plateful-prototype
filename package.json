@@ -1,0 +1,11 @@
+{
+  "name": "plateful-prototype",
+  "version": "1.0.0",
+  "description": "SEG 4505 Group 10 prototype: photo-based food journal (ingredient detection, auto-calibration, area to volume to weight to calories).",
+  "private": true,
+  "scripts": {
+    "start": "npx --yes serve . -l 8080",
+    "test": "node --test tests/calc.test.js"
+  },
+  "license": "UNLICENSED"
+}

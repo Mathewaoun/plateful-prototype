@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Plateful Prototype</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@500;700&family=DM+Sans:wght@400;500;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/styles.css">
+
+<script>new MutationObserver(()=>{for(const c of document.querySelectorAll('.stack td:not([data-l])')){let i=0,p=c;while(p=p.previousElementSibling)i+=p.colSpan;c.dataset.l=c.closest('table').rows[0].cells[i]?.textContent||''}}).observe(document,{childList:true,subtree:true})</script>
+</head>
+<body>
+<div class="wrap">
+<section class="phone" aria-label="Plateful app prototype">
+  <div class="top">
+    <div class="brand"><svg viewBox="0 0 32 32" aria-hidden="true"><circle cx="16" cy="16" r="14" fill="none" stroke="currentColor" stroke-width="3"/><circle cx="16" cy="16" r="8" fill="#e2452b"/><path d="M16 8a8 8 0 0 1 8 8h-8z" fill="#f2b134"/></svg>Plateful</div>
+    <div style="display:flex;align-items:center;gap:8px"><span class="pill" id="date"></span><button class="lang" id="lang" aria-label="Changer de langue / Switch language">FR</button></div>
+  </div>
+  <div class="tabs" role="tablist">
+    <button role="tab" id="t-scan" aria-selected="true" data-v="scan" data-k="tScan">Scan meal</button>
+    <button role="tab" id="t-today" aria-selected="false" data-v="today" data-k="tToday">Today</button>
+  </div>
+
+  <div class="view" id="v-scan">
+    <div class="shot" id="shot"><div class="empty" id="empty" data-k="empty">Take or upload a photo of your meal. No coin, hand or card needed.</div></div>
+    <div class="actions">
+      <label class="btn pri" id="upl"><span data-k="photo">Photo of meal</span><input type="file" id="file" accept="image/*" capture="environment"></label>
+      <button class="btn" id="add" disabled data-k="add">Add to today</button>
+    </div>
+    <div class="samples" aria-label="Sample meals">
+      <button data-s="0" data-k="s0">Sample: chicken &amp; rice</button>
+      <button data-s="1" data-k="s1">Sample: garden salad</button>
+      <button data-s="2" data-k="s2">Sample: bean soup</button>
+    </div>
+    <div id="status" class="note" role="status"></div>
+    <div id="result"></div>
+  </div>
+
+  <div class="view" id="v-today" hidden>
+    <div class="total"><div><div class="meta" data-k="inToday">Energy in today</div><b id="inK">0</b> <span class="meta">kcal</span></div><div class="meta" id="macT" style="text-align:right"></div></div>
+    <div class="bal">
+      <div class="meta" data-k="intake">Intake</div><div class="bar"><i id="barIn" style="background:var(--t);width:0"></i></div>
+      <div class="meta" data-k="expend">Expenditure (from Digital Health tracker, sample value)</div><div class="bar"><i id="barOut" style="background:var(--g);width:0"></i></div>
+      <p id="balTxt" style="margin:8px 0 0;font-weight:700"></p>
+    </div>
+    <ul class="log" id="log"></ul>
+    <div class="actions"><button class="btn" id="clear" data-k="clear">Clear today</button></div>
+    <label class="sw"><input type="checkbox" id="consent"><span data-k="consent">Let my corrected photos help improve the model (encrypted, can be withdrawn any time)</span></label>
+    <div class="note" id="fb"></div>
+    <details class="api"><summary data-k="api">API payload sent to Digital Health expenditure products</summary><pre id="apiOut"></pre><button class="btn" id="copy" data-k="copy">Copy JSON</button></details>
+  </div>
+</section>
+
+<section class="side">
+  <h1>Photo in, calories out, ingredient by ingredient</h1>
+  <p>SEG 4505 prototype for the Digital Health Inc. food journal. It runs the RFB's measurement method end to end: detect each visible ingredient, auto-calibrate scale, estimate volume, convert to weight with density tables, then to calories with nutrition tables.</p>
+
+  <h2>Pipeline (lights up as it runs)</h2>
+  <ol class="pipe" id="pipe">
+    <li data-p="0"><div><h3>Capture and upload</h3><p>Photo resized on-device, sent to the cloud. Production: pre-signed upload to Amazon S3.</p></div></li>
+    <li data-p="1"><div><h3>AI ingredient detection</h3><p>Every visible ingredient gets its own box, not just "salad". Prototype uses a vision model; production uses a segmentation model on Amazon SageMaker.</p></div></li>
+    <li data-p="2"><div><h3>Auto-calibration</h3><p>Real-world scale estimated from the scene itself, with no reference object (RFB §6). Gives cm per pixel.</p></div></li>
+    <li data-p="3"><div><h3>Area → volume</h3><p>Area = box × coverage × cm². Volume = area × depth, assuming the surface continues down uniformly (RFB §4).</p></div></li>
+    <li data-p="4"><div><h3>Volume → weight → kcal</h3><p>Density table gives grams; nutrition table gives kcal per 100 g. Total = sum over ingredients (RFB §5).</p></div></li>
+    <li data-p="5"><div><h3>User correction → incremental training</h3><p>Edits are queued as labelled samples to fine-tune the model incrementally, not retrain from scratch (RFB §9).</p></div></li>
+  </ol>
+
+  <h2>Target architecture on AWS</h2>
+  <div class="arch">
+    <svg viewBox="0 0 640 230" role="img" aria-label="Architecture: mobile app to API Gateway, S3, SQS, SageMaker, DynamoDB, with incremental training loop">
+      <defs><marker id="ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" fill="#7a8a7f"/></marker></defs>
+      <g font-family="DM Sans,sans-serif" font-size="13" text-anchor="middle">
+        <g stroke="#7a8a7f" stroke-width="1.6" fill="none" marker-end="url(#ar)">
+          <path d="M100 60H138"/><path d="M240 60H278"/><path d="M380 60H418"/><path d="M470 85V128"/><path d="M418 160H380"/><path d="M330 135V88"/><path d="M190 85V128"/><path d="M520 160H560V105"/>
+        </g>
+        <g fill="#e3f0e7" stroke="#1f5c3a" stroke-width="1.5">
+          <rect x="10" y="35" width="90" height="50" rx="10"/><rect x="140" y="35" width="100" height="50" rx="10"/><rect x="280" y="35" width="100" height="50" rx="10"/><rect x="420" y="35" width="100" height="50" rx="10"/>
+          <rect x="420" y="135" width="100" height="50" rx="10"/><rect x="280" y="135" width="100" height="50" rx="10"/><rect x="140" y="135" width="100" height="50" rx="10"/><rect x="530" y="55" width="100" height="50" rx="10" fill="#fbeee0" stroke="#e2452b"/>
+        </g>
+        <g fill="#18201b">
+          <text x="55" y="58">iOS / Android</text><text x="55" y="74" font-size="11">app</text>
+          <text x="190" y="58">API Gateway</text><text x="190" y="74" font-size="11">+ Cognito</text>
+          <text x="330" y="58">S3 images</text><text x="330" y="74" font-size="11">event trigger</text>
+          <text x="470" y="58">SQS queue</text><text x="470" y="74" font-size="11">millions/day</text>
+          <text x="470" y="158">SageMaker</text><text x="470" y="174" font-size="11">detect + segment</text>
+          <text x="330" y="158">Lambda</text><text x="330" y="174" font-size="11">volume → kcal</text>
+          <text x="190" y="158">DynamoDB</text><text x="190" y="174" font-size="11">meal log</text>
+          <text x="580" y="78">Incremental</text><text x="580" y="94" font-size="11">fine-tuning</text>
+        </g>
+        <text x="320" y="218" fill="#7a8a7f" font-size="12">Uses only the client's existing Amazon cloud (RFB §8); everything scales horizontally.</text>
+      </g>
+    </svg>
+  </div>
+
+  <h2>Charter requirements shown in this demo</h2>
+  <table class="stack">
+    <thead><tr><th>Charter</th><th>Requirement</th><th>Where you see it</th></tr></thead>
+    <tbody>
+      <tr><td>FR1</td><td>Detect every visible ingredient</td><td>Salad sample splits into lettuce, tomato, carrot, cucumber</td></tr>
+      <tr><td>FR2</td><td>Auto-calibration, no reference object</td><td>Scale shown per photo, estimated from the scene</td></tr>
+      <tr><td>FR3</td><td>Area → volume → weight → kcal, summed</td><td>Formula line under each ingredient</td></tr>
+      <tr><td>FR4</td><td>Uniform distribution below the surface</td><td>Bean soup sample: bean share of surface applied to full depth</td></tr>
+      <tr><td>FR5</td><td>Incremental training</td><td>Corrections build the training queue (Today tab)</td></tr>
+      <tr><td>FR6</td><td>History and correction</td><td>Tap any ingredient to fix it; Today tab keeps the log</td></tr>
+      <tr><td>O1, O2 / R1</td><td>Accuracy ≥ 94 %, calorie error ≤ 15 %</td><td>Confidence per ingredient; below 75 % it is flagged for the user to check</td></tr>
+      <tr><td>O3</td><td>Analysis ≤ 5 s</td><td>Measured time shown on every live scan</td></tr>
+      <tr><td>O4</td><td>≥ 5 M images/day on existing AWS</td><td>Architecture above: queue-based, auto-scaling</td></tr>
+      <tr><td>O5</td><td>Meal logged in ≤ 3 interactions</td><td>Photo → Add to today: 2 taps, counted on screen</td></tr>
+      <tr><td>O6</td><td>Android and iOS</td><td>Mobile-first UI; camera opens directly on phones</td></tr>
+      <tr><td>Out of scope</td><td>Salt, oil, seasoning</td><td>Stated under each result</td></tr>
+    </tbody>
+  </table>
+  <h2 style="margin-top:28px">Alternatives we evaluated</h2>
+  <table class="stack">
+    <thead><tr><th>Decision</th><th>Options considered</th><th>Chosen and why</th></tr></thead>
+    <tbody>
+      <tr><td>Logging method</td><td>Manual entry; barcode scan; photo reviewed by a human (MealSnap-style)</td><td><b>Automatic photo analysis (VBM)</b>: the client's preferred method; no human in the loop, so it scales to millions of photos</td></tr>
+      <tr><td>Recognition</td><td>Whole-dish classification; multi-label tags</td><td><b>Ingredient-level detection + segmentation</b>: only option meeting FR1 ("carrots, lettuce, tomato", not "salad") and giving areas for weight</td></tr>
+      <tr><td>Scale</td><td>Reference object (coin, thumb); depth sensor (LiDAR, only some phones)</td><td><b>Single-image auto-calibration</b> [3]: reference objects are forbidden, LiDAR excludes most Android phones</td></tr>
+      <tr><td>Where AI runs</td><td>On the phone</td><td><b>Cloud (AWS)</b>: higher accuracy (94.33 % vs 87.16 % local [6]), model updates without app releases; offline photos are queued (H13)</td></tr>
+      <tr><td>Training</td><td>Full retraining on all data</td><td><b>Incremental fine-tuning</b> on new labelled photos + a replay sample of old data: required by the RFB, far cheaper</td></tr>
+      <tr><td>Mobile</td><td>Two native apps (Swift + Kotlin)</td><td><b>One cross-platform codebase (Flutter)</b>: one team of 19 ships both platforms; juniors learn one stack</td></tr>
+    </tbody>
+  </table>
+
+  <h2 style="margin-top:28px">Why it beats existing apps</h2>
+  <table class="stack">
+    <thead><tr><th>App</th><th>Automatic</th><th>Measures weight</th><th>Ingredient level</th></tr></thead>
+    <tbody>
+      <tr><td>MealSnap</td><td>No: a person reviews the photo</td><td>No</td><td>No</td></tr>
+      <tr><td>Carbs&amp;Cals</td><td>No: user picks portions</td><td>No: user estimates</td><td>No</td></tr>
+      <tr><td><b>Plateful</b></td><td><b>Yes</b></td><td><b>Yes: area × depth × density</b></td><td><b>Yes</b></td></tr>
+    </tbody>
+  </table>
+  <p class="meta">Based on the client's own analysis in the RFB. Market: clinics, nutrition centres, sports teams and the public, sold with Digital Health's expenditure products.</p>
+
+  <h2 style="margin-top:28px">Prototype vs production</h2>
+  <table class="stack">
+    <thead><tr><th>Part</th><th>In this prototype</th><th>In production</th></tr></thead>
+    <tbody>
+      <tr><td>Detection</td><td>General vision AI model returning boxes</td><td>Segmentation model trained on public food datasets, on SageMaker</td></tr>
+      <tr><td>Calibration</td><td>Scene-based estimate by the AI model</td><td>Distance-estimation method [3] using camera data</td></tr>
+      <tr><td>Area</td><td>Box × coverage fraction</td><td>Pixel-exact segmentation masks</td></tr>
+      <tr><td>Food tables</td><td>~45 typical reference values</td><td>Canadian Nutrient File (H4) + density database</td></tr>
+      <tr><td>Storage</td><td>This browser only</td><td>DynamoDB + S3, encrypted at rest and in transit</td></tr>
+      <tr><td>Calculation</td><td>Same formulas as production</td><td>Same formulas, in AWS Lambda</td></tr>
+    </tbody>
+  </table>
+  <p class="meta" style="margin-top:12px">Sample meals are drawn illustrations with pre-computed detections, so the demo works without a network. Density and kcal values are typical reference figures; production uses the Canadian Nutrient File (H4). Expenditure is sample data.</p>
+  <p class="meta">SEG 4505, Group 10: Melanie Malek, Henry Saber, Michael Haddad, Mathew Aoun.</p>
+</section>
+</div>
+
+<script src="js/data.js"></script>
+<script src="js/calc.js"></script>
+<script src="js/app.js"></script>
+
+</body>
+</html>
