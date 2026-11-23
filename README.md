@@ -26,6 +26,8 @@ Run the unit tests (Node 18+):
 npm test
 ```
 
+**Website:** https://mathewaoun.github.io/plateful-prototype/ (app only). The full explanation page for the presentation is at `/details.html`.
+
 **Live demo (with live AI detection):** see the hosted Claude artifact link shared by the team. Opened from this repository, the three sample meals and every other feature work fully offline. Live photo analysis needs the hosted version, because it calls a vision model through the Claude artifact runtime.
 
 ## What the demo shows
@@ -66,7 +68,8 @@ If the user corrects a weight, the correction replaces the estimate. If a food i
 ## Project structure
 
 ```
-index.html          page markup (phone app + "how it works" panel)
+index.html          the app only (this is the website's home page)
+details.html        app + "how it works" panel: pipeline, AWS architecture, requirements, alternatives, competitors
 css/styles.css      styles, light and dark mode
 js/data.js          UI strings (EN/FR), food reference table, sample meals
 js/calc.js          measurement pipeline (area → volume → weight → kcal)

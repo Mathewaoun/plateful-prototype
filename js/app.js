@@ -43,8 +43,9 @@ const macros=m=>`<div class="mac"><span>${t("P")} ${r0(m.P)} g</span><span>${t("
 function render(){
   const m=cur;computeMeal(m,imgAR);
   const shot=$("#shot");shot.querySelectorAll(".box,.scan").forEach(e=>e.remove());
-  m.items.forEach((it,i)=>{const[x,y,w,h]=it.bbox,b=document.createElement("div");b.className="box"+(i%2?" lo":"");b.dataset.i=i;
+  m.items.forEach((it,i)=>{const[x,y,w,h]=it.bbox,b=document.createElement("div");b.className="box";b.dataset.i=i;
     b.style.cssText=`left:${x*100}%;top:${y*100}%;width:${w*100}%;height:${h*100}%`;const s=document.createElement("span");s.textContent=dn(it);b.append(s);shot.append(b)});
+  placeLabels(shot);
   const dish=Array.isArray(m.dish)?m.dish[lang=="fr"?1:0]:m.dish;
   $("#result").innerHTML=`<div class="total"><div><div class="meta">${esc(dish)}</div><b>${r0(m.total)}</b> <span class="meta">kcal</span></div><div class="meta" style="text-align:right">${r0(m.grams)} ${t("total")}<br>${t("wide",r0(m.image_width_cm))}</div></div>${macros(m)}
   <ul class="items">${m.items.map((it,i)=>`<li data-i="${i}" tabindex="0"><span class="nm">${esc(dn(it))}<span class="tag ${it.src=="aiest"?"ai":""}">${t(it.src)}</span></span><span class="kc">${r0(it.kcal)} kcal</span>
@@ -52,6 +53,18 @@ function render(){
   <div class="note">${m.ms?t("time",(m.ms/1000).toFixed(1)):""}${t("tap")} ${esc(m.not_visible_note||t("hidden"))}. ${t("calib",r0((m.calibration_confidence||.8)*100))}</div>`;
   pipe(4);
 }
+// Move a label below its box, then inside it, if it would overlap a label already placed.
+function placeLabels(shot){
+  const placed=[],hit=(r,q)=>r.left<q.right&&q.left<r.right&&r.top<q.bottom&&q.top<r.bottom;
+  shot.querySelectorAll(".box").forEach(b=>{
+    for(const cls of ["","lo","in"]){
+      b.classList.remove("lo","in");if(cls)b.classList.add(cls);
+      const r=b.querySelector("span").getBoundingClientRect();
+      if(!placed.some(q=>hit(r,q))||cls=="in"){placed.push(r);break}
+    }
+  });
+}
+addEventListener("resize",()=>{const s=$("#shot");if(s.querySelector(".box"))placeLabels(s)});
 function edit(i){
   const li=$(`#result li[data-i="${i}"]`);if(!li||li.querySelector(".edit"))return;
   const it=cur.items[i],d=document.createElement("div");d.className="edit";
