@@ -36,28 +36,37 @@ Deno.serve(async (req) => {
     if (typeof image !== "string" || image.length < 100 || image.length > 6_000_000) return json({ error: "bad_image" }, 400);
     const type = mime === "image/png" ? "image/png" : "image/jpeg";
 
-    // Try the configured model first, then stable aliases, so a renamed model doesn't break the demo.
-    const models = [Deno.env.get("GEMINI_MODEL"), "gemini-flash-latest", "gemini-2.5-flash", "gemini-flash-lite-latest"].filter(Boolean) as string[];
-    let last = "";
-    for (const model of models) {
-      const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, {
+    // Fastest model first; each model gets 20 s, then the next one is tried. "Thinking" is turned down for speed.
+    const models = [Deno.env.get("GEMINI_MODEL"), "gemini-flash-lite-latest", "gemini-flash-latest", "gemini-2.5-flash"].filter(Boolean) as string[];
+    const call = (model: string, thinking: boolean) =>
+      fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, {
         method: "POST",
+        signal: AbortSignal.timeout(20000),
         headers: { "Content-Type": "application/json", "x-goog-api-key": key },
         body: JSON.stringify({
           contents: [{ role: "user", parts: [{ text: prompt(lang) }, { inline_data: { mime_type: type, data: image } }] }],
-          generationConfig: { responseMimeType: "application/json", temperature: 0.2 },
+          generationConfig: { responseMimeType: "application/json", temperature: 0.2, ...(thinking ? { thinkingConfig: { thinkingBudget: 0 } } : {}) },
         }),
       });
-      const body = await r.json().catch(() => ({}));
-      if (r.status === 429) return json({ error: "rate_limited" }, 429);
-      if (r.status === 400 && /api key/i.test(body?.error?.message || "")) return json({ error: "bad_key" }, 500);
-      if (!r.ok) { last = `${model}: ${r.status} ${body?.error?.message || ""}`; continue; }
-      const text = (body?.candidates?.[0]?.content?.parts || []).map((p: { text?: string }) => p.text || "").join("");
+    let last = "";
+    for (const model of models) {
+      const t0 = Date.now();
       try {
-        const result = JSON.parse(text.replace(/^\s*```(?:json)?/i, "").replace(/```\s*$/, ""));
-        return json({ model, result });
-      } catch { last = `${model}: unreadable answer`; }
+        let r = await call(model, true);
+        let body = await r.json().catch(() => ({}));
+        if (r.status === 400 && /thinking/i.test(body?.error?.message || "")) { r = await call(model, false); body = await r.json().catch(() => ({})); }
+        console.log(`${model}: HTTP ${r.status} in ${Date.now() - t0} ms`);
+        if (r.status === 429) { last = `${model}: rate limited`; continue; }
+        if (r.status === 400 && /api key/i.test(body?.error?.message || "")) return json({ error: "bad_key" }, 500);
+        if (!r.ok) { last = `${model}: ${r.status} ${body?.error?.message || ""}`; console.log(last); continue; }
+        const text = (body?.candidates?.[0]?.content?.parts || []).map((p: { text?: string }) => p.text || "").join("");
+        try {
+          const result = JSON.parse(text.replace(/^\s*```(?:json)?/i, "").replace(/```\s*$/, ""));
+          return json({ model, ms: Date.now() - t0, result });
+        } catch { last = `${model}: unreadable answer`; console.log(last); }
+      } catch (e) { last = `${model}: ${String(e)} after ${Date.now() - t0} ms`; console.log(last); }
     }
+    if (/rate limited/.test(last)) return json({ error: "rate_limited" }, 429);
     return json({ error: "model_error", detail: last }, 502);
   } catch (e) {
     return json({ error: "server_error", detail: String(e) }, 500);

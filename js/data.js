@@ -99,3 +99,5 @@ Object.assign(T.en,{aiKey:"Photo analysis isn't set up yet: the AI key is missin
  noAI:"Log in to analyse your own photos, or try one of the sample meals below."});
 Object.assign(T.fr,{aiKey:"L'analyse de photo n'est pas encore configurée : la clé IA manque sur le serveur. Essayez un exemple.",aiFn:"L'analyse de photo n'est pas encore configurée : la fonction analyze-meal n'est pas déployée. Essayez un exemple.",
  noAI:"Connectez-vous pour analyser vos photos, ou essayez un repas d'exemple ci-dessous."});
+Object.assign(T.en,{aiSlow:"The photo analysis took too long. Try again, or try a sample meal.",aiModel:"The AI service couldn't read this photo. Try another photo or a sample meal."});
+Object.assign(T.fr,{aiSlow:"L'analyse de la photo a pris trop de temps. Réessayez ou essayez un exemple.",aiModel:"Le service d'IA n'a pas pu lire cette photo. Essayez une autre photo ou un exemple."});

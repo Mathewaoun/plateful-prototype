@@ -110,7 +110,11 @@ const DB=(()=>{
     // Photo analysis through the "analyze-meal" Edge Function (signed-in users only; the AI key stays on the server).
     canAnalyze:()=>remote&&!!user,
     async analyze(imageB64,lang){
-      const {data,error}=await sb.functions.invoke("analyze-meal",{body:{image:imageB64,mime:"image/jpeg",lang}});
+      const ctl=new AbortController(),timer=setTimeout(()=>ctl.abort(),75000);       // never spin forever
+      let data,error;
+      try{({data,error}=await sb.functions.invoke("analyze-meal",{body:{image:imageB64,mime:"image/jpeg",lang},signal:ctl.signal}))}
+      catch(e){if(ctl.signal.aborted){const x=new Error("timeout");x.code="timeout";throw x}throw e}finally{clearTimeout(timer)}
+      if(ctl.signal.aborted){const x=new Error("timeout");x.code="timeout";throw x}
       if(error){let code="server_error";try{const b=await error.context.json();code=b.error||code}catch{if(/fetch|network|relay|not found/i.test(error.message||""))code=/not found/i.test(error.message)?"no_function":"network"}
         if(error.context?.status==404)code="no_function";const e=new Error(code);e.code=code;throw e}
       return data;

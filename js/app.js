@@ -170,7 +170,7 @@ Rules:
 - not_visible_note = short list of likely hidden items (oil, salt, butter, sauce) you cannot measure.
 - If the image is not food, return {"dish":"not food","items":[]}.`;
 async function prep(file){
-  const bm=await createImageBitmap(file),k=Math.min(1,1024/Math.max(bm.width,bm.height)),c=document.createElement("canvas");
+  const bm=await createImageBitmap(file),k=Math.min(1,800/Math.max(bm.width,bm.height)),c=document.createElement("canvas");
   c.width=r0(bm.width*k);c.height=r0(bm.height*k);c.getContext("2d").drawImage(bm,0,0,c.width,c.height);
   const tc=document.createElement("canvas"),ts=Math.min(bm.width,bm.height);tc.width=tc.height=112;           // square thumbnail for the meal log
   tc.getContext("2d").drawImage(bm,(bm.width-ts)/2,(bm.height-ts)/2,ts,ts,0,0,112,112);
@@ -192,7 +192,7 @@ async function analyse(p){
       items:out.items.slice(0,12).map(i=>({name:String(i.name||"food").toLowerCase(),bbox:(Array.isArray(i.bbox)?i.bbox:[0,0,1,1]).concat([0,0,1,1]).slice(0,4).map(v=>cl(v,0,1,0)),coverage:cl(i.coverage,.02,1,.7),thickness_cm:cl(i.thickness_cm,.1,15,2),confidence:cl(i.confidence,0,1,.7),density_g_cm3:cl(i.density_g_cm3,.05,2,1),kcal_per_100g:cl(i.kcal_per_100g,0,900,100),protein_g:cl(i.protein_g,0,100,0),carbs_g:cl(i.carbs_g,0,100,0),fat_g:cl(i.fat_g,0,100,0)}))};
     status(t("found",cur.items.length));pipe(2);setTimeout(()=>render(true),200);
   }catch(err){sc.remove();const c=err?.code||err?.message;
-    status(c=="rate_limited"?t("rate"):c=="not_granted"?t("declined"):c=="missing_key"||c=="bad_key"?t("aiKey"):c=="no_function"?t("aiFn"):c=="network"?t("eNet"):t("fail"),1)}
+    status(c=="rate_limited"?t("rate"):c=="not_granted"?t("declined"):c=="missing_key"||c=="bad_key"?t("aiKey"):c=="no_function"?t("aiFn"):c=="network"?t("eNet"):c=="timeout"?t("aiSlow"):c=="model_error"?t("aiModel"):t("fail"),1)}
 }
 $("#file").onchange=async e=>{
   const f=e.target.files[0];e.target.value="";if(!f)return;
