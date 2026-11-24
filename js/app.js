@@ -176,17 +176,23 @@ async function prep(file){
   tc.getContext("2d").drawImage(bm,(bm.width-ts)/2,(bm.height-ts)/2,ts,ts,0,0,112,112);
   return{blob:await new Promise(r=>c.toBlob(r,"image/jpeg",.85)),url:c.toDataURL("image/jpeg",.85),ar:c.width/c.height,thumb:tc.toDataURL("image/jpeg",.7)};
 }
+// Two ways to analyse a real photo: the Claude-hosted page (sample) or the website's Supabase Edge Function (DB.analyze).
+async function detect(p){
+  if(sample)return sample.json(PROMPT(),{images:[p.blob],modelTier:"default"});
+  const r=await DB.analyze(p.url.split(",")[1],lang);return r?.result;
+}
 async function analyse(p){
-  if(!sample){status(t("noAI"),1);return}
+  if(!sample&&!DB.canAnalyze()){status(t("noAI"),1);return}
   const sc=document.createElement("div");sc.className="scan";$("#shot").append(sc);status(t("detecting"));pipe(1);
   try{
-    const t0=performance.now(),out=await sample.json(PROMPT(),{images:[p.blob],modelTier:"default"}),ms=performance.now()-t0;sc.remove();
+    const t0=performance.now(),out=await detect(p),ms=performance.now()-t0;sc.remove();
     if(!out||!Array.isArray(out.items)||!out.items.length){status(out?.dish=="not food"?t("notFood"):t("none"),1);return}
     const cl=(v,a,b,d)=>{v=+v;return isFinite(v)?Math.min(b,Math.max(a,v)):d};
     cur={ms,dish:String(out.dish||t("meal")),image_width_cm:cl(out.image_width_cm,8,120,35),calibration_confidence:cl(out.calibration_confidence,0,1,.6),not_visible_note:String(out.not_visible_note||""),
       items:out.items.slice(0,12).map(i=>({name:String(i.name||"food").toLowerCase(),bbox:(Array.isArray(i.bbox)?i.bbox:[0,0,1,1]).concat([0,0,1,1]).slice(0,4).map(v=>cl(v,0,1,0)),coverage:cl(i.coverage,.02,1,.7),thickness_cm:cl(i.thickness_cm,.1,15,2),confidence:cl(i.confidence,0,1,.7),density_g_cm3:cl(i.density_g_cm3,.05,2,1),kcal_per_100g:cl(i.kcal_per_100g,0,900,100),protein_g:cl(i.protein_g,0,100,0),carbs_g:cl(i.carbs_g,0,100,0),fat_g:cl(i.fat_g,0,100,0)}))};
     status(t("found",cur.items.length));pipe(2);setTimeout(()=>render(true),200);
-  }catch(err){sc.remove();status(err?.code=="rate_limited"?t("rate"):err?.code=="not_granted"?t("declined"):t("fail"),1)}
+  }catch(err){sc.remove();const c=err?.code||err?.message;
+    status(c=="rate_limited"?t("rate"):c=="not_granted"?t("declined"):c=="missing_key"||c=="bad_key"?t("aiKey"):c=="no_function"?t("aiFn"):c=="network"?t("eNet"):t("fail"),1)}
 }
 $("#file").onchange=async e=>{
   const f=e.target.files[0];e.target.value="";if(!f)return;

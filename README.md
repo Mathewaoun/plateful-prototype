@@ -28,7 +28,7 @@ npm test
 
 **Website:** https://mathewaoun.github.io/plateful-prototype/ (app only). The full explanation page for the presentation is at `/details.html`.
 
-**Live demo (with live AI detection):** see the hosted Claude artifact link shared by the team. Opened from this repository, the three sample meals and every other feature work fully offline. Live photo analysis needs the hosted version, because it calls a vision model through the Claude artifact runtime.
+**Live demo (with live AI detection):** see the hosted Claude artifact link shared by the team. Real photos are analysed on the website once the `analyze-meal` server function is deployed (see below). The three sample meals work without it.
 
 ## Backend: accounts and database
 
@@ -50,6 +50,16 @@ In production this layer maps to **API Gateway + Cognito + DynamoDB** on the cli
 4. Put the Project URL and the publishable (anon) key in `js/config.js`. Both are safe to publish; never use the secret/service_role key in the app.
 
 To show stored data in the demo: Supabase → **Table Editor → meals**.
+
+### Real photo analysis (server function)
+
+Real photos are analysed by the `analyze-meal` Supabase Edge Function (`supabase/functions/analyze-meal/index.ts`). It accepts photos only from signed-in users, sends them to Google Gemini's vision model, and returns every visible ingredient with its box, coverage, depth and food values. The app then runs the same measurement pipeline (`js/calc.js`). The AI key is stored as a server secret and never reaches the browser.
+
+1. Get a free Gemini API key at aistudio.google.com (**Get API key → Create API key**).
+2. Supabase → **Edge Functions → Deploy a new function → Via Editor**, name it `analyze-meal`, paste `index.ts`, click **Deploy**.
+3. Supabase → **Edge Functions → Secrets**: add `GEMINI_API_KEY` = your key. Optional: `GEMINI_MODEL` to choose a specific model.
+
+Note: on Gemini's free tier, Google may use submitted content to improve its products, so use test meals in the demo. Production replaces this with the team's own segmentation model on SageMaker.
 
 ## The app
 
@@ -107,6 +117,7 @@ js/config.js        Supabase project URL + publishable key
 js/db.js            data layer: accounts, profiles, meals, corrections, offline queue
 js/vendor/          supabase-js browser build (bundled, no CDN needed)
 supabase/schema.sql database tables, security rules and sign-up trigger
+supabase/functions/analyze-meal/  server function for real photo analysis (Gemini vision)
 js/app.js           app shell (intro, Today, Scan, Week, Profile), live AI detection, journal, consent, API payload, offline queue
 tests/calc.test.js  unit tests for the pipeline (node:test, no dependencies)
 docs/               screenshots
@@ -116,7 +127,7 @@ docs/               screenshots
 
 | Part | Prototype | Production (project plan) |
 |---|---|---|
-| Detection | General vision AI model returning bounding boxes | Ingredient segmentation model trained on public food datasets, on Amazon SageMaker |
+| Detection | Gemini vision model via a Supabase Edge Function, returning bounding boxes | Ingredient segmentation model trained on public food datasets, on Amazon SageMaker |
 | Calibration | Scene-based estimate | Distance-estimation method [3] using camera data |
 | Area | Box × coverage fraction | Pixel-exact segmentation masks |
 | Food tables | ~45 typical reference values | Canadian Nutrient File (H4) + density database |

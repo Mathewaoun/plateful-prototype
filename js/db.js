@@ -107,6 +107,14 @@ const DB=(()=>{
       const b=await sb.from("corrections").delete().eq("user_id",user.id);if(b.error)fail(b.error);
       outbox.set(outbox.get().filter(x=>x.uid!=user.id));
     },
+    // Photo analysis through the "analyze-meal" Edge Function (signed-in users only; the AI key stays on the server).
+    canAnalyze:()=>remote&&!!user,
+    async analyze(imageB64,lang){
+      const {data,error}=await sb.functions.invoke("analyze-meal",{body:{image:imageB64,mime:"image/jpeg",lang}});
+      if(error){let code="server_error";try{const b=await error.context.json();code=b.error||code}catch{if(/fetch|network|relay|not found/i.test(error.message||""))code=/not found/i.test(error.message)?"no_function":"network"}
+        if(error.context?.status==404)code="no_function";const e=new Error(code);e.code=code;throw e}
+      return data;
+    },
     flush,
     pending:()=>user?outbox.get().filter(x=>x.uid==user.id).length:0
   };

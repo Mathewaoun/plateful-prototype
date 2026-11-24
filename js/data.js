@@ -93,3 +93,9 @@ Object.assign(T.en,{passNew:"Create a password",passL:"Password",show:"Show",hid
  pwLvl:["Weak","Fair","Strong","Very strong"],eWeak:"Please meet all the password rules below.",ePassEmpty:"Please enter your password."});
 Object.assign(T.fr,{passNew:"Créez un mot de passe",passL:"Mot de passe",show:"Afficher",hide:"Masquer",rLen:"Au moins 8 caractères",rUp:"Une majuscule (A–Z)",rLow:"Une minuscule (a–z)",rNum:"Un chiffre (0–9)",rSym:"Un symbole (ex. ! @ # ?)",
  pwLvl:["Faible","Moyen","Fort","Très fort"],eWeak:"Veuillez respecter toutes les règles du mot de passe ci-dessous.",ePassEmpty:"Veuillez entrer votre mot de passe."});
+
+// Photo-analysis server strings
+Object.assign(T.en,{aiKey:"Photo analysis isn't set up yet: the AI key is missing on the server. Try a sample meal.",aiFn:"Photo analysis isn't set up yet: the analyze-meal function isn't deployed. Try a sample meal.",
+ noAI:"Log in to analyse your own photos, or try one of the sample meals below."});
+Object.assign(T.fr,{aiKey:"L'analyse de photo n'est pas encore configurée : la clé IA manque sur le serveur. Essayez un exemple.",aiFn:"L'analyse de photo n'est pas encore configurée : la fonction analyze-meal n'est pas déployée. Essayez un exemple.",
+ noAI:"Connectez-vous pour analyser vos photos, ou essayez un repas d'exemple ci-dessous."});
