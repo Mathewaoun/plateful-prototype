@@ -239,9 +239,17 @@ function authText(){const su=authMode=="signup",lg=authMode=="login",np=authMode
   $("#authTitle").textContent=t(su?"suTitle":lg?"liTitle":np?"npTitle":"fgTitle");$("#authSub").textContent=t(su?"suSub":lg?"liSub":np?"npSub":"fgSub");
   $("#fName").hidden=!su;$("#fEmail").hidden=np;$("#fPass").hidden=fg;$("#authGo").textContent=t(su?"suBtn":lg?"liBtn":np?"npBtn":"fgBtn");
   $("#authSwitch").hidden=np;$("#authSwitch").textContent=t(su?"haveAcc":"noAcc");$("#forgot").hidden=!lg||!DB.remote;
-  $("#aPass").autocomplete=su||np?"new-password":"current-password";
+  $("#aPass").autocomplete=su||np?"new-password":"current-password";$("#pwBox").hidden=!(su||np);$("#passLbl")?.remove();
+  $("#fPass").querySelector("[data-k]").textContent=t(su||np?"passNew":"passL");checkPw();
   $("#authMode").textContent=DB.remote?t("modeCloud"):t("modeLocal");$("#authMode").classList.toggle("cloud",DB.remote)}
 function showAuth(mode){authMode=mode;$("#auth").hidden=false;$("#authErr").textContent="";authText();setTimeout(()=>$(mode=="signup"?"#aName":mode=="newpass"?"#aPass":"#aEmail").focus(),50)}
+// Strong password rules (sign up and new password): checked live, enforced before submit.
+const PW_RULES={len:p=>p.length>=8,up:p=>/[A-Z]/.test(p),low:p=>/[a-z]/.test(p),num:p=>/\d/.test(p),sym:p=>/[^A-Za-z0-9]/.test(p)};
+function checkPw(){const p=$("#aPass").value,ok=Object.entries(PW_RULES).map(([k,f])=>{const v=f(p);$(`#pwRules [data-r="${k}"]`).classList.toggle("ok",v);return v}),n=ok.filter(Boolean).length;
+  const lvl=!p?0:n<=2?1:n<=4?2:p.length>=12?4:3;$("#pwBar").style.width=lvl*25+"%";$("#pwBar").className="l"+lvl;$("#pwLabel").textContent=p?t("pwLvl")[lvl-1]:"";return n==5}
+["#aName","#aEmail","#aPass"].forEach(id=>$(id).addEventListener("input",()=>{$("#authErr").textContent=""}));
+$("#aPass").addEventListener("input",checkPw);
+$("#pwShow").onclick=()=>{const i=$("#aPass"),sh=i.type=="password";i.type=sh?"text":"password";$("#pwShow").textContent=t(sh?"hide":"show")};
 $("#authLang").onclick=()=>$("#lang").click();
 $("#authSwitch").onclick=()=>showAuth(authMode=="signup"?"login":"signup");
 $("#forgot").onclick=()=>showAuth("forgot");
@@ -250,14 +258,15 @@ const authMsg=e=>{const m=(e?.message||"").toLowerCase();return m.includes("inva
 $("#authForm").onsubmit=async e=>{e.preventDefault();const name=$("#aName").value.trim(),email=$("#aEmail").value.trim(),pass=$("#aPass").value,err=$("#authErr");err.textContent="";
   if(authMode=="signup"&&!name){err.textContent=t("eName");return}
   if(authMode!="newpass"&&!/^\S+@\S+\.\S+$/.test(email)){err.textContent=t("eEmail");return}
-  if(authMode!="forgot"&&pass.length<6){err.textContent=t("ePass");return}
+  if((authMode=="signup"||authMode=="newpass")&&!checkPw()){err.textContent=t("eWeak");$("#aPass").focus();return}
+  if(authMode=="login"&&!pass){err.textContent=t("ePassEmpty");return}
   const btn=$("#authGo");btn.disabled=true;
   try{
     if(authMode=="signup"){const r=await DB.signUp(name,email,pass,lang);if(r.needsConfirm){err.textContent="";authMode="login";authText();$("#authErr").textContent=t("checkEmail");return}}
     else if(authMode=="login")await DB.signIn(email,pass);
     else if(authMode=="forgot"){await DB.resetPassword(email);$("#authErr").textContent=t("resetSent");return}
     else if(authMode=="newpass"){await DB.setPassword(pass);toast(t("passSet"))}
-    $("#aPass").value="";await boot();
+    $("#aPass").value="";$("#aPass").type="password";checkPw();await boot();
   }catch(x){err.textContent=authMsg(x)}finally{btn.disabled=false}};
 
 async function boot(){

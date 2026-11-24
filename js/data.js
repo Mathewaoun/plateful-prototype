@@ -87,3 +87,9 @@ Object.assign(T.fr,{
  dbErr:"Enregistrement impossible. Réessayez.",modeCloud:"Connecté à la base de données infonuagique",modeLocal:"Mode démo : enregistré dans ce navigateur seulement",
  account:"Compte",logout:"Se déconnecter",queued:n=>`${n} élément${n>1?"s":""} en attente de synchronisation.`,offlineSaved:"Enregistré hors ligne. Synchronisation au retour de la connexion.",synced:n=>`${n} élément${n>1?"s":""} synchronisé${n>1?"s":""}.`,
  noAI:"L'analyse de photo en direct n'est pas offerte sur cette page. Essayez un repas d'exemple ci-dessous."});
+
+// Strong password strings
+Object.assign(T.en,{passNew:"Create a password",passL:"Password",show:"Show",hide:"Hide",rLen:"At least 8 characters",rUp:"An uppercase letter (A–Z)",rLow:"A lowercase letter (a–z)",rNum:"A number (0–9)",rSym:"A symbol (e.g. ! @ # ?)",
+ pwLvl:["Weak","Fair","Strong","Very strong"],eWeak:"Please meet all the password rules below.",ePassEmpty:"Please enter your password."});
+Object.assign(T.fr,{passNew:"Créez un mot de passe",passL:"Mot de passe",show:"Afficher",hide:"Masquer",rLen:"Au moins 8 caractères",rUp:"Une majuscule (A–Z)",rLow:"Une minuscule (a–z)",rNum:"Un chiffre (0–9)",rSym:"Un symbole (ex. ! @ # ?)",
+ pwLvl:["Faible","Moyen","Fort","Très fort"],eWeak:"Veuillez respecter toutes les règles du mot de passe ci-dessous.",ePassEmpty:"Veuillez entrer votre mot de passe."});

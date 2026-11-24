@@ -101,7 +101,9 @@
     <form id="authForm" novalidate>
       <label class="af" id="fName"><span data-k="nameL"></span><input id="aName" autocomplete="name" maxlength="60"></label>
       <label class="af" id="fEmail"><span data-k="emailL"></span><input id="aEmail" type="email" autocomplete="email" inputmode="email" autocapitalize="off" spellcheck="false"></label>
-      <label class="af" id="fPass"><span data-k="passL"></span><input id="aPass" type="password" minlength="6"></label>
+      <label class="af" id="fPass"><span data-k="passL"></span><span class="pwrow"><input id="aPass" type="password" minlength="8" aria-describedby="pwRules"><button type="button" class="pwshow" id="pwShow" data-k="show"></button></span></label>
+      <div class="pwbox" id="pwBox" hidden><div class="pwmeter"><i id="pwBar"></i></div><span class="pwlabel" id="pwLabel"></span>
+        <ul class="pwrules" id="pwRules"><li data-r="len" data-k="rLen"></li><li data-r="up" data-k="rUp"></li><li data-r="low" data-k="rLow"></li><li data-r="num" data-k="rNum"></li><li data-r="sym" data-k="rSym"></li></ul></div>
       <p class="aerr" id="authErr" role="alert"></p>
       <button class="btn pri wide" id="authGo" type="submit"></button>
     </form>
