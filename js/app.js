@@ -7,8 +7,8 @@ const r0=n=>Math.round(n),r1=n=>Math.round(n*10)/10,fmt=n=>r0(n).toLocaleString(
 const store={get(k,d){try{return JSON.parse(localStorage.getItem(k))??d}catch{return d}},set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch{}}};
 const reduce=matchMedia("(prefers-reduced-motion: reduce)").matches;
 
-// ---------- State (kept in this browser; production: DynamoDB) ----------
-let lang=store.get("pf-lang","en"),goal=store.get("pf-goal",2200),log=store.get("pf-log2",[]),fb=store.get("pf-fb",[]),consent=store.get("pf-consent",false);
+// ---------- State (loaded from the database after login, see db.js) ----------
+let lang=store.get("pf-lang","en"),goal=2200,log=[],consent=false,profile=null;
 const BURN=2340;                                   // calories burned, sample value from the Digital Health tracker
 let cur=null,imgAR=4/3,sample=null,pending=null,curThumb=null,curSample=-1,view="today";
 const t=(k,...a)=>{const v=T[lang][k];return typeof v=="function"?v(...a):v};
@@ -16,6 +16,8 @@ const nm=d=>Array.isArray(d)?d[lang=="fr"?1:0]:d;   // sample/demo names are [en
 const dayKey=d=>{d=new Date(d);return`${d.getFullYear()}-${d.getMonth()+1}-${d.getDate()}`};
 const slotOf=d=>{const h=new Date(d).getHours();return h<11?0:h<15?1:h<18?2:3};
 const pipe=n=>$$("#pipe li").forEach(li=>li.classList.toggle("on",+li.dataset.p<=n));   // only on details.html
+function busy(on){$("#busy").hidden=!on}
+async function safe(fn){try{return await fn()}catch(e){console.error(e);toast(t("dbErr"));}}
 function toast(msg){const e=$("#toast");e.textContent=msg;e.classList.add("on");clearTimeout(toast.t);toast.t=setTimeout(()=>e.classList.remove("on"),2200)}
 function countUp(el,to){if(reduce){el.textContent=fmt(to);return}const from=+(el.dataset.v||0),t0=performance.now();el.dataset.v=to;
   const step=n=>{const p=Math.min(1,(n-t0)/650),e=1-(1-p)**3;el.textContent=fmt(from+(to-from)*e);if(p<1)requestAnimationFrame(step)};requestAnimationFrame(step)}
@@ -87,16 +89,20 @@ function renderWeek(){
 }
 
 // ---------- Profile: goal, consent (privacy NFR), training queue (FR5), API payload (H15) ----------
-function apiPayload(){const ms=todays();return{userId:"demo-user",date:new Date().toISOString().slice(0,10),source:"plateful-food-journal",intakeKcal:r0(ms.reduce((s,m)=>s+m.kcal,0)),
+function apiPayload(){const ms=todays();return{userId:DB.user?.id||"demo-user",date:new Date().toISOString().slice(0,10),source:"plateful-food-journal",intakeKcal:r0(ms.reduce((s,m)=>s+m.kcal,0)),
   meals:ms.map(m=>({time:m.iso,slot:T.en.slot[m.slot].toLowerCase(),dish:nm(m.dish),kcal:r0(m.kcal),protein_g:r0(m.P||0),carbs_g:r0(m.C||0),fat_g:r0(m.F||0),grams:r0(m.g||0)}))}}
-function renderProfile(){$("#goalIn").value=goal;$("#consent").checked=consent;
-  $("#fb").textContent=t("fb",consent?fb.length:fb.filter(x=>x.consent).length,consent);$("#apiOut").textContent=JSON.stringify(apiPayload(),null,2)}
-$("#goalIn").onchange=e=>{const v=Math.min(5000,Math.max(1000,+e.target.value||2200));goal=v;store.set("pf-goal",v);e.target.value=v;toast(t("saved"))};
-$("#consent").onchange=e=>{consent=e.target.checked;store.set("pf-consent",consent);renderProfile()};
+async function renderProfile(){$("#goalIn").value=goal;$("#consent").checked=consent;
+  $("#accName").textContent=profile?.name||DB.user?.user_metadata?.name||"";$("#accEmail").textContent=DB.user?.email||"";
+  $("#accMode").textContent=DB.remote?t("modeCloud"):t("modeLocal");$("#accMode").classList.toggle("cloud",DB.remote);
+  $("#apiOut").textContent=JSON.stringify(apiPayload(),null,2);
+  const c=await safe(()=>DB.countCorrections());if(c)$("#fb").textContent=t("fb",consent?c.all:c.consented,consent)+(DB.pending()?" "+t("queued",DB.pending()):"")}
+$("#goalIn").onchange=e=>{const v=Math.min(5000,Math.max(1000,+e.target.value||2200));goal=v;e.target.value=v;safe(async()=>{await DB.saveProfile({daily_goal:v});toast(t("saved"))})};
+$("#consent").onchange=e=>{consent=e.target.checked;safe(async()=>{await DB.saveProfile({consent});renderProfile()})};
+$("#logout").onclick=()=>safe(async()=>{await DB.signOut();log=[];profile=null;showAuth("login")});
 $("#copy").onclick=async()=>{try{await navigator.clipboard.writeText($("#apiOut").textContent);toast(t("copied"))}catch{}};
 $("#replay").onclick=()=>openOnb();
-$("#reset").onclick=()=>{log=[];fb=[];store.set("pf-log2",log);store.set("pf-fb",fb);store.set("pf-seeded",false);seedDemo();toast(t("resetDone"));go("today")};
-function queueFb(before,after){fb.push({at:new Date().toISOString(),before,after,consent});store.set("pf-fb",fb);pipe(5)}
+$("#reset").onclick=()=>safe(async()=>{busy(true);await DB.resetData();await seedDemo(true);await loadMeals();busy(false);toast(t("resetDone"));go("today")}).finally(()=>busy(false));
+function queueFb(before,after){pipe(5);safe(()=>DB.addCorrection({dish:cur?.dish,before,after,consent}))}
 
 // ---------- Scan ----------
 function render(animate){
@@ -127,7 +133,6 @@ function placeLabels(shot){
   });
 }
 addEventListener("resize",()=>{const s=$("#shot");if(s.querySelector(".box"))placeLabels(s)});
-addEventListener("resize",()=>{const s=$("#shot");if(s.querySelector(".box"))placeLabels(s)});
 function edit(i){
   const li=$(`#result li[data-i="${i}"]`);if(!li||li.querySelector(".edit"))return;
   const it=cur.items[i],d=document.createElement("div");d.className="edit";
@@ -143,7 +148,6 @@ $("#result").addEventListener("keydown",e=>{if(e.key=="Enter"&&e.target.matches(
 $("#shot").addEventListener("mouseover",e=>{const b=e.target.closest(".box");document.querySelectorAll(".box").forEach(x=>x.classList.toggle("hl",x===b))});
 
 function show(src,ar){imgAR=ar;$("#empty")?.remove();let im=$("#shot img");if(!im){im=document.createElement("img");im.alt="Meal photo";$("#shot").prepend(im)}im.src=src;$("#shot").style.aspectRatio=ar}
-function status(x,err){const s=$("#status");s.textContent=x;s.classList.toggle("err",!!err)}
 function status(x,err){const s=$("#status");s.textContent=x;s.classList.toggle("err",!!err)}
 function resetScan(){cur=null;$("#result").innerHTML="";$("#add").hidden=true;$("#shot").querySelectorAll(".box,.scan").forEach(x=>x.remove())}
 $$("[data-s]").forEach(b=>b.onclick=()=>{
@@ -193,38 +197,82 @@ $("#file").onchange=async e=>{
 addEventListener("online",()=>{if(pending){const p=pending;pending=null;status(t("back"));analyse(p)}});
 
 // Log the meal (O5: photo -> log = 2 taps), then show it on Today.
-$("#add").onclick=()=>{if(!cur)return;const now=new Date(),slot=slotOf(now),id=now.getTime();
-  log.push({id,iso:now.toISOString(),slot,dish:cur.dish,kcal:cur.total,P:cur.P,C:cur.C,F:cur.F,g:cur.grams,thumb:curThumb,si:curSample});
-  store.set("pf-log2",log);toast(t("logged",t("slot")[slot]));resetScan();$("#shot img")?.remove();
+$("#add").onclick=async()=>{if(!cur)return;const now=new Date(),slot=slotOf(now);$("#add").disabled=true;
+  const items=cur.items.map(i=>({name:i.name,g:r0(i.g),kcal:r0(i.kcal),confidence:r1(i.confidence),source:i.src}));
+  const saved=await safe(()=>DB.addMeal({iso:now.toISOString(),slot,dish:cur.dish,kcal:cur.total,P:cur.P,C:cur.C,F:cur.F,g:cur.grams,items,thumb:curThumb,si:curSample}));
+  if(!saved){$("#add").disabled=false;return}const id=saved.id;log.push(saved);
+  toast(saved.queued?t("offlineSaved"):t("logged",t("slot")[slot]));resetScan();$("#shot img")?.remove();
   if(!$("#empty")){const e=document.createElement("div");e.className="empty";e.id="empty";e.dataset.k="empty";e.textContent=t("empty");$("#shot").append(e)}
   status(t("start"));go("today");renderToday(id)};
 
 // ---------- Sample history so the Week view has data (clearly labelled as sample data) ----------
-function seedDemo(){if(store.get("pf-seeded",false))return;const R=rng(42),out=[],pick=()=>DEMO_MEALS[Math.floor(R()*DEMO_MEALS.length)];
+async function seedDemo(force){if(!force&&log.some(m=>m.demo))return;const R=rng(Date.now()%100000+1),out=[],pick=()=>DEMO_MEALS[Math.floor(R()*DEMO_MEALS.length)];
   for(let d=6;d>=1;d--){const day=new Date();day.setDate(day.getDate()-d);
     const slots=[[8,0],[12,1],[15,2],[19,3]].filter(([,sl])=>sl!=2||R()<.6),meals=slots.map(pick),
       target=goal*(.82+R()*.34),base=meals.reduce((a,m)=>a+m[2],0),k=target/base;          // portion sizes vary so days land around the goal
     slots.forEach(([h,slot],j)=>{const m=meals[j],at=new Date(day);at.setHours(h,Math.floor(R()*50),0,0);
-      out.push({id:at.getTime(),iso:at.toISOString(),slot,dish:[m[0],m[1]],kcal:r0(m[2]*k),P:m[3]*k,C:m[4]*k,F:m[5]*k,g:0,si:m[6],demo:true})})}
-  log=out.concat(log.filter(m=>!m.demo));store.set("pf-log2",log);store.set("pf-seeded",true)}
+      out.push({iso:at.toISOString(),slot,dish:[m[0],m[1]],kcal:r0(m[2]*k),P:m[3]*k,C:m[4]*k,F:m[5]*k,g:0,si:m[6],demo:true,items:[]})})}
+  await DB.addMany(out)}
+async function loadMeals(){const since=new Date();since.setHours(0,0,0,0);since.setDate(since.getDate()-7);log=await DB.listMeals(since.toISOString())}
 
 // ---------- Onboarding (first visit) ----------
 let slide=0;
 function openOnb(){$("#onb").hidden=false;slide=0;$("#onbGoal").value=goal;
   $("#art0").innerHTML=`<img src="${sampleImg(1)}" alt="">`;$("#art1").innerHTML=`<img src="${sampleImg(0)}" alt="">`;setSlide(0)}
-function setSlide(i){slide=i;$("#slides").scrollTo({left:$("#slides").clientWidth*i,behavior:reduce?"auto":"smooth"});
+let autoScroll=0;
+function setSlide(i){slide=i;autoScroll=Date.now();$("#slides").scrollTo({left:$("#slides").clientWidth*i,behavior:reduce?"auto":"smooth"});
   $$("#dots i").forEach((d,j)=>d.classList.toggle("on",j==i));$("#next").textContent=i==2?t("start"):t("next")}
-function closeOnb(){const v=Math.min(5000,Math.max(1000,+$("#onbGoal").value||2200));goal=v;store.set("pf-goal",v);store.set("pf-onb",true);$("#onb").hidden=true;go("today")}
+async function closeOnb(){const v=Math.min(5000,Math.max(1000,+$("#onbGoal").value||2200));goal=v;$("#onb").hidden=true;busy(true);
+  await safe(async()=>{await DB.saveProfile({daily_goal:v,onboarded:true});profile={...profile,daily_goal:v,onboarded:true};if(!log.some(m=>m.demo)){await seedDemo();await loadMeals()}});busy(false);go("today")}
 $("#next").onclick=()=>slide<2?setSlide(slide+1):closeOnb();$("#skip").onclick=closeOnb;
-$("#slides").addEventListener("scroll",()=>{const i=Math.round($("#slides").scrollLeft/$("#slides").clientWidth);if(i!=slide){slide=i;$$("#dots i").forEach((d,j)=>d.classList.toggle("on",j==i));$("#next").textContent=i==2?t("start"):t("next")}},{passive:true});
+$("#slides").addEventListener("scroll",()=>{if(Date.now()-autoScroll<700)return;const i=Math.round($("#slides").scrollLeft/$("#slides").clientWidth);if(i!=slide){slide=i;$$("#dots i").forEach((d,j)=>d.classList.toggle("on",j==i));$("#next").textContent=i==2?t("start"):t("next")}},{passive:true});
 $("#onb").addEventListener("keydown",e=>{if(e.key=="ArrowRight"&&slide<2)setSlide(slide+1);if(e.key=="ArrowLeft"&&slide>0)setSlide(slide-1)});
 
 // ---------- Language (H14) ----------
 function applyLang(){document.documentElement.lang=lang;$$("[data-k]").forEach(e=>{const v=t(e.dataset.k);if(typeof v=="string")e.textContent=v});$("#lang").textContent=lang=="en"?"FR":"EN";
-  if(cur)render(false);else status(t("start"));if(!$("#onb").hidden)setSlide(slide);go(view)}
-$("#lang").onclick=()=>{lang=lang=="en"?"fr":"en";store.set("pf-lang",lang);applyLang()};
+  if(cur)render(false);else status(t("start"));if(!$("#onb").hidden)setSlide(slide);authText();if(DB.user)go(view)}
+$("#lang").onclick=()=>{lang=lang=="en"?"fr":"en";store.set("pf-lang",lang);applyLang();if(DB.user)safe(()=>DB.saveProfile({lang}))};
+
+// ---------- Accounts: sign up, log in, password reset (Supabase Auth) ----------
+let authMode="signup";
+function authText(){const su=authMode=="signup",lg=authMode=="login",np=authMode=="newpass",fg=authMode=="forgot";
+  $("#authTitle").textContent=t(su?"suTitle":lg?"liTitle":np?"npTitle":"fgTitle");$("#authSub").textContent=t(su?"suSub":lg?"liSub":np?"npSub":"fgSub");
+  $("#fName").hidden=!su;$("#fEmail").hidden=np;$("#fPass").hidden=fg;$("#authGo").textContent=t(su?"suBtn":lg?"liBtn":np?"npBtn":"fgBtn");
+  $("#authSwitch").hidden=np;$("#authSwitch").textContent=t(su?"haveAcc":"noAcc");$("#forgot").hidden=!lg||!DB.remote;
+  $("#aPass").autocomplete=su||np?"new-password":"current-password";
+  $("#authMode").textContent=DB.remote?t("modeCloud"):t("modeLocal");$("#authMode").classList.toggle("cloud",DB.remote)}
+function showAuth(mode){authMode=mode;$("#auth").hidden=false;$("#authErr").textContent="";authText();setTimeout(()=>$(mode=="signup"?"#aName":mode=="newpass"?"#aPass":"#aEmail").focus(),50)}
+$("#authLang").onclick=()=>$("#lang").click();
+$("#authSwitch").onclick=()=>showAuth(authMode=="signup"?"login":"signup");
+$("#forgot").onclick=()=>showAuth("forgot");
+const authMsg=e=>{const m=(e?.message||"").toLowerCase();return m.includes("invalid login")?t("eBadLogin"):m.includes("already")?t("eExists"):m.includes("password")&&m.includes("6")?t("ePass"):
+  m.includes("email")&&m.includes("valid")?t("eEmail"):m.includes("not confirmed")?t("eConfirm"):m.includes("rate")||m.includes("security purposes")?t("eRate"):/fetch|network/.test(m)?t("eNet"):(e?.message||t("dbErr"))};
+$("#authForm").onsubmit=async e=>{e.preventDefault();const name=$("#aName").value.trim(),email=$("#aEmail").value.trim(),pass=$("#aPass").value,err=$("#authErr");err.textContent="";
+  if(authMode=="signup"&&!name){err.textContent=t("eName");return}
+  if(authMode!="newpass"&&!/^\S+@\S+\.\S+$/.test(email)){err.textContent=t("eEmail");return}
+  if(authMode!="forgot"&&pass.length<6){err.textContent=t("ePass");return}
+  const btn=$("#authGo");btn.disabled=true;
+  try{
+    if(authMode=="signup"){const r=await DB.signUp(name,email,pass,lang);if(r.needsConfirm){err.textContent="";authMode="login";authText();$("#authErr").textContent=t("checkEmail");return}}
+    else if(authMode=="login")await DB.signIn(email,pass);
+    else if(authMode=="forgot"){await DB.resetPassword(email);$("#authErr").textContent=t("resetSent");return}
+    else if(authMode=="newpass"){await DB.setPassword(pass);toast(t("passSet"))}
+    $("#aPass").value="";await boot();
+  }catch(x){err.textContent=authMsg(x)}finally{btn.disabled=false}};
+
+async function boot(){
+  if(!DB.user){showAuth(store.get("pf-had-account",false)?"login":"signup");return}
+  store.set("pf-had-account",true);busy(true);
+  try{profile=await DB.getProfile();goal=profile.daily_goal||2200;consent=!!profile.consent;
+    if(profile.lang&&profile.lang!=lang){lang=profile.lang;store.set("pf-lang",lang)}
+    await DB.flush();await loadMeals();$("#auth").hidden=true;applyLang();go("today");
+    if(!profile.onboarded)openOnb();
+  }catch(e){console.error(e);$("#auth").hidden=false;$("#authErr").textContent=authMsg(e)}finally{busy(false)}}
+DB.onAuth((ev)=>{if(ev=="PASSWORD_RECOVERY")showAuth("newpass")});
+addEventListener("online",()=>safe(async()=>{const n=await DB.flush();if(n){toast(t("synced",n));await loadMeals();go(view)}}));
 
 // ---------- Start ----------
-seedDemo();applyLang();if(!store.get("pf-onb",false))openOnb();
+applyLang();
+(async()=>{const recovering=/type=recovery/.test(location.hash);busy(true);try{await DB.session()}catch{}busy(false);if(recovering||(!$("#auth").hidden&&authMode=="newpass")){showAuth("newpass");return}boot()})();
 (async()=>{try{sample=await window.claude?.use?.("sample");if(sample){const l=await sample.limits?.();if(l&&!l.images)sample=null}}catch{sample=null}})();
 }

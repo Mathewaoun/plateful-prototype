@@ -30,6 +30,27 @@ npm test
 
 **Live demo (with live AI detection):** see the hosted Claude artifact link shared by the team. Opened from this repository, the three sample meals and every other feature work fully offline. Live photo analysis needs the hosted version, because it calls a vision model through the Claude artifact runtime.
 
+## Backend: accounts and database
+
+The app uses **Supabase** (a hosted PostgreSQL database with built-in user accounts) as its backend:
+
+- **Sign up / log in / log out / forgot password** with email and password (Supabase Auth). Sessions persist across reloads.
+- **Tables** (`supabase/schema.sql`): `profiles` (name, daily goal, language, training consent), `meals` (every logged meal with macros, ingredients and a thumbnail), `corrections` (user edits: the labelled data for incremental training, FR5).
+- **Row-level security:** each user can only read and change their own rows, enforced by the database.
+- **Offline (H13):** meals logged without a connection are queued and synced automatically when it returns.
+- If `js/config.js` has no project URL and key, the app falls back to "demo mode" and saves in the browser only.
+
+In production this layer maps to **API Gateway + Cognito + DynamoDB** on the client's existing AWS account (charter H8). The app code only talks to `js/db.js`, so swapping the backend doesn't touch the rest of the app.
+
+### Setting up the database (once)
+
+1. In Supabase, open **SQL Editor → New query**, paste `supabase/schema.sql`, and click **Run**.
+2. **Authentication → Sign In / Providers → Email:** turn off **Confirm email** so new users get in immediately.
+3. **Authentication → URL Configuration:** set **Site URL** to `https://mathewaoun.github.io/plateful-prototype/` so password-reset links come back to the app.
+4. Put the Project URL and the publishable (anon) key in `js/config.js`. Both are safe to publish; never use the secret/service_role key in the app.
+
+To show stored data in the demo: Supabase → **Table Editor → meals**.
+
 ## The app
 
 - **Intro** on first visit: three swipeable screens, then you set a daily calorie goal.
@@ -82,6 +103,10 @@ details.html        app + "how it works" panel: pipeline, AWS architecture, requ
 css/styles.css      styles, light and dark mode
 js/data.js          UI strings (EN/FR), food reference table, sample meals
 js/calc.js          measurement pipeline (area → volume → weight → kcal)
+js/config.js        Supabase project URL + publishable key
+js/db.js            data layer: accounts, profiles, meals, corrections, offline queue
+js/vendor/          supabase-js browser build (bundled, no CDN needed)
+supabase/schema.sql database tables, security rules and sign-up trigger
 js/app.js           app shell (intro, Today, Scan, Week, Profile), live AI detection, journal, consent, API payload, offline queue
 tests/calc.test.js  unit tests for the pipeline (node:test, no dependencies)
 docs/               screenshots
@@ -95,7 +120,7 @@ docs/               screenshots
 | Calibration | Scene-based estimate | Distance-estimation method [3] using camera data |
 | Area | Box × coverage fraction | Pixel-exact segmentation masks |
 | Food tables | ~45 typical reference values | Canadian Nutrient File (H4) + density database |
-| Storage | Browser localStorage | DynamoDB + S3, encrypted at rest and in transit |
+| Storage and accounts | Supabase (PostgreSQL + Auth, row-level security) | Cognito + DynamoDB + S3, encrypted at rest and in transit |
 | Processing | In the page | API Gateway → S3 → SQS → SageMaker → Lambda, auto-scaling on the client's existing AWS |
 | Mobile | Responsive web app | Flutter app for Android and iOS |
 
